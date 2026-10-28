@@ -10,6 +10,8 @@ thinking, tool calls, errors, turn finished) and a small table of keyword rules 
 reply text as it streams. The animation lives inside the SVG, so the pane only redraws when
 the mood changes.
 
+I've found it handy to run in one chat while working in another.  The sidekick activities let's me know what's happening there in a visual way.
+
 ## Install
 
 At the prompt of a Claude Code terminal session:
