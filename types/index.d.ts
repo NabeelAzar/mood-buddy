@@ -28,6 +28,8 @@ export type Antic =
   | 'juggle'
   | 'scan'
   | 'reboot'
+  | 'stretch'
+  | 'powerup'
 
 export type BuddyMood = { mood: Mood; bubble: string; antic?: Antic }
 

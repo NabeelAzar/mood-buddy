@@ -38,6 +38,8 @@ For the desktop buddy, run `desktop\build.cmd` once after installing; it builds
 
 While nothing is happening, every 20 to 40 seconds the buddy plays a little scene of its own for a
 few seconds, and stops the moment anything happens. After 90 seconds it falls asleep and dreams.
+Every 3 to 6 minutes it wakes up (the cat with a yawn and a big stretch, the robot powering up
+with a creak), plays one antic, and dozes off again.
 
 - Cat: grooms, bats a ball of yarn, watches and pounces on a butterfly, pushes a cup off a table,
   loafs and purrs. Dreams of a mouse.

@@ -23,6 +23,8 @@ export type AnticLook = {
   motion?: string
   // Robot only: the antenna sways.
   isAntennaWiggling?: boolean
+  // Played only on waking from a nap, never picked at random.
+  isWakeUp?: boolean
   art: string
 }
 
@@ -176,13 +178,44 @@ export const ANTIC_LOOKS: Record<Antic, AnticLook> = {
       <rect x="75" y="83" width="0" height="4" rx="1.5" fill="${GLOW}"><animate attributeName="width" values="0;12;14;40;50;50" keyTimes="0;0.15;0.3;0.45;0.62;1" ${loop(5)}/></rect></g>
       <text x="100" y="88" font-size="15" font-weight="bold" text-anchor="middle" fill="${GLOW}" font-family="sans-serif" opacity="0">Hello!<animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.68;0.7;1" ${loop(5)}/></text>`,
   },
+  // Wakes with a big yawn and stretches its front paws out.
+  stretch: {
+    skin: 'cat',
+    ms: 3600,
+    eyes: 'closed',
+    mouth: 'o',
+    ears: 'tilt',
+    isWakeUp: true,
+    motion: `<animateTransform attributeName="transform" type="translate" values="0 0;0 5;0 5;0 0" keyTimes="0;0.3;0.7;1" ${loop(3.6)}/>`,
+    art: `<g><animateTransform attributeName="transform" type="translate" values="16 0;0 0;0 0;16 0" keyTimes="0;0.3;0.7;1" ${loop(3.6)}/>
+      <ellipse cx="40" cy="188" rx="12" ry="6" fill="${FUR}" stroke="${INK}" stroke-width="2.5"/>
+      <ellipse cx="54" cy="191" rx="12" ry="6" fill="${FUR}" stroke="${INK}" stroke-width="2.5"/></g>
+      <g stroke="#d9822b" stroke-width="2" fill="none" stroke-linecap="round" opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.3;0.7;1" ${loop(3.6)}/>
+      <path d="M22 176 l-8 -3 M20 186 l-9 0 M22 196 l-8 3"/></g>`,
+  },
+  // Powers up from sleep mode: eyes flick on, sparks, a creaky arm swing.
+  powerup: {
+    skin: 'robot',
+    ms: 3600,
+    eyes: 'wide',
+    mouth: 'flat',
+    bounce: true,
+    tempo: 0.9,
+    light: '#69db7c',
+    isWakeUp: true,
+    art: `<g stroke="#ffd43b" stroke-width="3" stroke-linecap="round"><animate attributeName="opacity" values="0;1;0" ${loop(0.6)}/>
+      <path d="M40 46 l-10 -8 M36 60 l-12 0 M160 46 l10 -8 M164 60 l12 0"/></g>
+      <text x="14" y="128" font-size="13" font-weight="bold" font-family="sans-serif" fill="#868e96" opacity="0">creak<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.1;0.4;0.5;1" ${loop(3.6)}/></text>`,
+  },
 }
 
 const ALL = Object.keys(ANTIC_LOOKS) as Antic[]
-export const ANTICS: Record<Skin, readonly Antic[]> = {
-  cat: ALL.filter(antic => ANTIC_LOOKS[antic].skin === 'cat'),
-  robot: ALL.filter(antic => ANTIC_LOOKS[antic].skin === 'robot'),
-}
+const pickable = (skin: Skin) =>
+  ALL.filter(antic => ANTIC_LOOKS[antic].skin === skin && ANTIC_LOOKS[antic].isWakeUp !== true)
+export const ANTICS: Record<Skin, readonly Antic[]> = { cat: pickable('cat'), robot: pickable('robot') }
+
+// What each character does first when it wakes from a nap.
+export const WAKE_ANTIC: Record<Skin, Antic> = { cat: 'stretch', robot: 'powerup' }
 
 // Asleep, the cat dreams of a mouse scurrying by.
 export const CAT_DREAM = `<g fill="#fff" stroke="#9aa3b5" stroke-width="2">

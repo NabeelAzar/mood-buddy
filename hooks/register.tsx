@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Antic, BuddyMood, Mood, Skin } from '../types'
-import { ANTICS, ANTIC_LOOKS } from './antics'
+import { ANTICS, ANTIC_LOOKS, WAKE_ANTIC } from './antics'
 import { STRONG, anticLine, classifyText, lineFor, toolMood } from './moods'
 import { face, sprite } from './sprites'
 
@@ -23,6 +23,8 @@ const HAPPY_MS = 2500
 const SLEEP_MS = 90_000
 // While idle, an antic starts after a random wait in this range.
 const ANTIC_WAIT_MS = [20_000, 40_000] as const
+// Asleep, it wakes after a random wait in this range for a stretch and one antic.
+const WAKE_WAIT_MS = [180_000, 360_000] as const
 // How much new reply text arrives before it is scored again.
 const RESCORE_CHARS = 40
 const WINDOW_CHARS = 400
@@ -82,12 +84,14 @@ async function setMood($: EngineInterface, mood: Mood, isForced = false): Promis
   else if (isForced) holdUntil = 0
 
   sleep?.cancel()
-  sleep = $.clock.after(SLEEP_MS, () => void setMood($, 'sleepy', true))
+  sleep = mood === 'sleepy' ? undefined : $.clock.after(SLEEP_MS, () => void setMood($, 'sleepy', true))
 
-  // Anything that happens ends an antic; settling into idle lines up the next.
+  // Anything that happens ends an antic; settling into idle lines up the next,
+  // falling asleep lines up the next wake-up.
   const wasPlaying = currentAntic !== undefined
   stopAntics()
   if (mood === 'idle') scheduleAntic($)
+  else if (mood === 'sleepy') scheduleWake($)
   if (mood === current && !isForced && !wasPlaying) return
   current = mood
   await show($, lineFor(mood, currentSkin))
@@ -114,8 +118,9 @@ function scheduleAntic($: EngineInterface): void {
   anticTimer = $.clock.after(least + Math.random() * (most - least), () => void playAntic($))
 }
 
-// Picks one of the character's antics (not the last one), shows it for its length, then waits again.
-async function playAntic($: EngineInterface): Promise<void> {
+// Picks one of the character's antics (not the last one) and shows it for its
+// length; then waits for the next one, or after a wake-up dozes off again.
+async function playAntic($: EngineInterface, isThenAsleep = false): Promise<void> {
   if (current !== 'idle') return
   const choices = ANTICS[currentSkin].filter(antic => antic !== lastAntic)
   const antic = choices[Math.floor(Math.random() * choices.length)]
@@ -124,10 +129,29 @@ async function playAntic($: EngineInterface): Promise<void> {
   currentAntic = antic
   anticTimer = $.clock.after(ANTIC_LOOKS[antic].ms, () => {
     currentAntic = undefined
+    if (isThenAsleep) {
+      void setMood($, 'sleepy', true)
+      return
+    }
     scheduleAntic($)
     void show($, lineFor('idle'))
   })
   await show($, anticLine(antic))
+}
+
+function scheduleWake($: EngineInterface): void {
+  const [least, most] = WAKE_WAIT_MS
+  anticTimer = $.clock.after(least + Math.random() * (most - least), () => void wake($))
+}
+
+// Now and then a napping buddy wakes, stretches, plays one antic and dozes off again.
+async function wake($: EngineInterface): Promise<void> {
+  if (current !== 'sleepy') return
+  current = 'idle'
+  const stretch = WAKE_ANTIC[currentSkin]
+  currentAntic = stretch
+  anticTimer = $.clock.after(ANTIC_LOOKS[stretch].ms, () => void playAntic($, true))
+  await show($, anticLine(stretch))
 }
 
 // The desktop overlay (desktop/) draws whatever this file last said.
@@ -158,11 +182,10 @@ async function overlayHelp($: EngineInterface): Promise<string> {
 
 async function setSkin($: EngineInterface, skin: Skin, isSaved = true): Promise<void> {
   currentSkin = skin
-  // The other character's antic would make no sense on this one.
+  // The other character's antic would make no sense on this one; settle back
+  // into idle, which also restarts the clock toward a nap.
   if (currentAntic !== undefined) {
-    stopAntics()
-    if (current === 'idle') scheduleAntic($)
-    await show($, lineFor(current, skin))
+    await setMood($, 'idle', true)
   } else {
     publish($)
     showStatus($)

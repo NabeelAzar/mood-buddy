@@ -98,6 +98,8 @@ const ANTIC_LINES: Record<Antic, readonly string[]> = {
   juggle: ['Watch this!', 'Bolt, bolt, bolt… oops.'],
   scan: ['Scanning…', 'Fly detected!'],
   reboot: ['Rebooting…', 'Hello, world!'],
+  stretch: ['*yaaawn*… big stretch!', 'Mrrrow… *stretch*'],
+  powerup: ['Powering up… *creak*', 'Sleep mode off. Hi!'],
 }
 
 function pick(lines: readonly string[]): string {

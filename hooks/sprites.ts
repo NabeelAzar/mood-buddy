@@ -318,6 +318,8 @@ const ANTIC_FACES: Record<Antic, string> = {
   juggle: '[•‿•]🔩',
   scan: '[•_•]-🔴',
   reboot: '[...]',
+  stretch: '(=^-o-^=)~',
+  powerup: '[O_O]⚡',
 }
 
 export function face(skin: Skin, mood: Mood, antic?: Antic): string {
