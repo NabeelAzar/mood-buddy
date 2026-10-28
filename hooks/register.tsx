@@ -249,11 +249,12 @@ async function requestOverlayQuit($: EngineInterface): Promise<void> {
   await $.fs.write(file, request)
 }
 
-// Builds the desktop buddy into ~/.claude/mood-buddy/app (the same place for
-// every session and plugin version, so a pinned shortcut keeps working), again
-// only when its sources change, and says how to start it. It is started by
-// the person, not from here: a program Claude Code starts can run sandboxed,
-// and WebView2 can't start its own processes there.
+// The desktop buddy lives in ~/.claude/mood-buddy/app (the same place for every
+// session and plugin version, so a pinned shortcut keeps working). The mod runs
+// no programs: it puts on the clipboard either the program, or, when it isn't
+// built from this plugin's current source, the build command, which closes a
+// running buddy, builds the new one and starts it. The person runs either with
+// Win+R, outside any sandbox Claude Code runs in.
 async function prepareOverlay($: EngineInterface): Promise<string> {
   if (PLUGIN_ROOT === undefined || stateDir === undefined) {
     return "The desktop buddy needs mood-buddy installed as a plugin (under Claude Code's .claude folder)."
@@ -279,45 +280,33 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
     const recorded = await $.fs.read(fingerprintFile)
     builtFrom = recorded.trim()
   }
-  let intro = ''
-  if (builtFrom !== fingerprint) {
-    // A running buddy locks its program file, so it is asked to close first.
-    if (hasExe) {
-      await requestOverlayQuit($)
-      await $.clock.sleep(1500)
-    }
-    // `call` keeps cmd from stripping the quotes around paths with spaces. The two
-    // paths are this plugin's build script and the folder to build into.
-    const buildScript = windowsPath(`${sourceDir}/build.cmd`)
-    const buildInto = windowsPath(appDir)
-    const built = await $.process.run(['cmd.exe', '/d', '/c', 'call', buildScript, buildInto], { timeoutMs: 180_000 })
-    if (built.exitCode !== 0) {
-      const why = `${built.stdout}\n${built.stderr}`.trim().split(/\r?\n/).pop() ?? 'unknown error'
-      return [
-        `Couldn't build the desktop buddy here (${why}).`,
-        'Build it yourself in a Command Prompt, then run /buddy desktop again:',
-        `  "${buildScript}" "${buildInto}"`,
-      ].join('\n')
-    }
-    await $.fs.write(fingerprintFile, fingerprint)
-    intro = hasExe ? 'Updated the desktop buddy (it closed to update; open it again). ' : 'Built the desktop buddy. '
-  }
-  // Win+R runs the program in the person's own session; the path goes on the
-  // clipboard where the surface allows, so it is three keys.
+  const isCurrent = builtFrom === fingerprint
+  // The build script records the fingerprint it was given once it has built.
+  const command = isCurrent ? exe : `"${windowsPath(buildPath)}" "${windowsPath(appDir)}" ${fingerprint}`
   let isCopied = false
   try {
-    const copied = await $.ui.copy({ text: exe })
+    const copied = await $.ui.copy({ text: command })
     isCopied = copied.isCopied
   } catch {
     isCopied = false
   }
-  const open = isCopied
-    ? 'To start it: press Win+R, then Ctrl+V (the path is on your clipboard), then Enter.'
-    : `To start it: press Win+R, paste ${exe}, then press Enter.`
+  const keys = isCopied
+    ? 'press Win+R, then Ctrl+V (it\'s on your clipboard), then Enter.'
+    : `press Win+R, paste this, then press Enter:\n  ${command}`
+  const about = 'It follows your Claude sessions while it runs; right-click it or run /buddy desktop off to close it.'
+  if (isCurrent) {
+    return [
+      `To start the desktop buddy, ${keys}`,
+      `It lives at ${exe}; pin it to Start from File Explorer to reopen it with a click.`,
+      about,
+    ].join('\n')
+  }
+  const what = hasExe ? 'This plugin has a newer desktop buddy.' : "The desktop buddy isn't built yet."
   return [
-    `${intro}${open}`,
-    `It lives at ${exe}; pin it to Start from File Explorer to reopen it with a click.`,
-    'It follows your Claude sessions while it runs; right-click it or run /buddy desktop off to close it.',
+    `${what} To build and start it, ${keys}`,
+    'A window builds it from this plugin\'s source (about 10 seconds; the first time it also downloads',
+    "Microsoft's WebView2 SDK from nuget.org), closing a running buddy first, then starts it.",
+    about,
   ].join('\n')
 }
 

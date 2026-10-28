@@ -58,38 +58,43 @@ What it reads stays in the mod: it is only hashed and compared.
 - `~/.claude/mood-buddy/state.json`: the current mood, its speech-bubble line, the character and
   its drawing, for the desktop buddy. Never any conversation text.
 - `~/.claude/mood-buddy/control.json`: a request for the desktop buddy to close
-  (`/buddy desktop off`, or before an update).
-- Only for `/buddy desktop`: the desktop buddy program in `~/.claude/mood-buddy/app/`, with
-  `app/lib/` (the WebView2 SDK files) and `app/source.sha256` (which version of the source it was
-  built from).
+  (`/buddy desktop off`).
+
+Nothing else. The desktop buddy's own files are written by its build script, which you run
+yourself (see below), not by the mod.
 
 It writes no build, start-up, settings or instructions file.
 
 ### What it sends, and where
 
 Nothing leaves your computer. Inside it: the mood goes to Claude Code's status line and pane, and
-to `state.json` for the desktop buddy. `/buddy desktop` puts the desktop buddy's path on your
-clipboard (Claude Code's `$.ui.copy` call, which writes the clipboard of the app you're using) so
-you can paste it into Win+R.
+to `state.json` for the desktop buddy. No conversation text goes anywhere: not to `state.json`,
+not to any file, not to the clipboard.
 
-The build command (below) is given only two folder paths, the build script's and the folder to
-build into; nothing the mod reads is passed to it. No conversation text goes anywhere: not to the
-build command, not to `state.json`, not to any file.
+`/buddy desktop` puts one line of text on your clipboard (Claude Code's `$.ui.copy` call, which
+writes the clipboard of the app you're using): either the desktop buddy's path, or its build
+command (below), for you to run with Win+R.
 
 ### What programs it runs, and why
 
-Only when you run `/buddy desktop`, and only if the desktop buddy isn't built yet or this
-plugin's update changed it: `cmd.exe` runs `desktop\build.cmd` from this plugin, to build the
-desktop buddy on your machine from the source in this repository instead of shipping a compiled
-program. `build.cmd` runs only Windows' own programs:
+None. The mod starts no programs.
 
+`/buddy desktop` hands you the desktop buddy's build command to run yourself, when the desktop
+buddy isn't built yet or an update to this plugin changed it. The command is this plugin's
+`desktop\build.cmd`, given the folder to build into, `~/.claude/mood-buddy/app/`, and a
+fingerprint of the source it builds (a SHA-256, recorded in `app/source.sha256` so the mod can tell
+when a rebuild is due). It builds the desktop buddy on your machine from the source in this
+repository instead of shipping a compiled program, and runs only Windows' own programs:
+
+- `taskkill.exe`, to close a running desktop buddy, whose program file it's about to replace;
 - the .NET Framework C# compiler (`csc.exe`), to compile `desktop\MoodBuddy.cs`;
 - `curl.exe`, once, to download Microsoft's WebView2 SDK, version 1.0.2903.40, from nuget.org;
 - `certutil.exe` and `findstr.exe`, to check that download against a pinned SHA-256 before using
   it;
-- `tar.exe`, to unpack the three WebView2 files the program needs.
+- `tar.exe`, to unpack the three WebView2 files the program needs;
 
-The mod never starts the desktop buddy; you do.
+then starts the new desktop buddy. It writes only into `~/.claude/mood-buddy/app/` (the program,
+the WebView2 files in `app/lib/`, and `app/source.sha256`) and a temporary download.
 
 ### The desktop buddy
 
@@ -122,8 +127,8 @@ While the repository is private, it installs only for people who can read it on 
 computer already has a git login for github.com (an SSH key, or `gh auth login` then
 `gh auth setup-git`): the install never asks for one.
 
-For the buddy on your Windows desktop too, run `/buddy desktop` and double-click the program it
-shows you.
+For the buddy on your Windows desktop too, run `/buddy desktop`, then press Win+R, Ctrl+V and
+Enter.
 
 ## Idle antics
 
@@ -157,13 +162,14 @@ two antics, and dozes off again.
 
 ## On the Windows desktop
 
-Run `/buddy desktop`. The first time, it builds a small always-on-top window with the same buddy
-into `~/.claude/mood-buddy/app/` (about 10 seconds) and tells you how to start it:
-press Win+R, paste the path (it's put on your clipboard where the app allows), Enter. Pin it to
-Start to reopen it any time; the path never changes, and `/buddy desktop` rebuilds it there only
-when a plugin update changes it. The mod
-writes each mood, with its drawing, to `~/.claude/mood-buddy/state.json`, and the
-window redraws whenever that file changes.
+Run `/buddy desktop`, then press Win+R, Ctrl+V and Enter. The first time, that runs the build
+command `/buddy desktop` put on your clipboard: a window builds a small always-on-top window with
+the same buddy into `~/.claude/mood-buddy/app/` (about 10 seconds), then starts it. After that,
+`/buddy desktop` puts the program's path on the clipboard instead, so the same three keys start
+it; or pin `MoodBuddy.exe` to Start from File Explorer. When a plugin update changes the desktop
+buddy, `/buddy desktop` hands you the build command again, which closes the old one, rebuilds it
+in the same place and starts it. The mod writes each mood, with its drawing, to
+`~/.claude/mood-buddy/state.json`, and the window redraws whenever that file changes.
 
 - About 820 KB in all: a 15 KB C# program plus Microsoft's WebView2 libraries. It draws with the
   WebView2 Runtime (the Edge engine) that ships with Windows 10 and 11, so nothing else is installed.
@@ -176,6 +182,6 @@ window redraws whenever that file changes.
   (like any Chromium) can't start its helper processes and crashes.
 - The build is `desktop\build.cmd`, using the C# compiler that ships with Windows. Its first run
   downloads Microsoft's WebView2 SDK (1.0.2903.40, BSD-licensed; the license comes inside the
-  package) from nuget.org, checks its SHA-256, and keeps the three DLLs it needs. Where
-  `/buddy desktop` can't build (no network, say), it prints the one command to run instead.
-  `desktop\build.cmd` with no folder builds into `desktop\build\` for working on the code.
+  package) from nuget.org, checks its SHA-256, and keeps the three DLLs it needs. If something
+  goes wrong, its window stays open and says what. `desktop\build.cmd` with no folder builds
+  into `desktop\build\` for working on the code.
