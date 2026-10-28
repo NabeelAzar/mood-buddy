@@ -232,16 +232,9 @@ async function writeAfter($: EngineInterface, previous: Promise<void>, file: str
 
 const PLUGIN_ROOT = pluginRootFrom((import.meta as { url?: string }).url)
 
-// What the desktop buddy is built from; when any of these change, it is rebuilt.
-const OVERLAY_SOURCES = ['MoodBuddy.cs', 'index.html', 'renderer.js', 'build.cmd'] as const
-
-async function overlayFingerprint($: EngineInterface, sourceDir: string): Promise<string> {
-  const texts: string[] = []
-  for (const name of OVERLAY_SOURCES) {
-    const path = `${sourceDir}/${name}`
-    const text = await $.fs.read(path)
-    texts.push(text)
-  }
+// The SHA-256 of what the desktop buddy is built from (its four source files);
+// when it changes, the buddy is rebuilt.
+async function fingerprintOf(texts: readonly string[]): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texts.join('\u0000')))
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')
 }
@@ -267,7 +260,15 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
   const appDir = `${stateDir}/app`
   const exe = windowsPath(`${appDir}/MoodBuddy.exe`)
   const fingerprintFile = `${appDir}/source.sha256`
-  const fingerprint = await overlayFingerprint($, sourceDir)
+  const programPath = `${sourceDir}/MoodBuddy.cs`
+  const pagePath = `${sourceDir}/index.html`
+  const scriptPath = `${sourceDir}/renderer.js`
+  const buildPath = `${sourceDir}/build.cmd`
+  const program = await $.fs.read(programPath)
+  const page = await $.fs.read(pagePath)
+  const script = await $.fs.read(scriptPath)
+  const build = await $.fs.read(buildPath)
+  const fingerprint = await fingerprintOf([program, page, script, build])
   const hasExe = await $.fs.exists(exe)
   const hasFingerprint = await $.fs.exists(fingerprintFile)
   let builtFrom = ''
