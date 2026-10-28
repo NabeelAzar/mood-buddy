@@ -67,8 +67,8 @@ two antics, and dozes off again.
 ## On the Windows desktop
 
 Run `/buddy desktop`. The first time, it builds a small always-on-top window with the same buddy
-into `%USERPROFILE%\.claude\mood-buddy\app\` (about 10 seconds), then opens File Explorer with
-`MoodBuddy.exe` selected: double-click it. Pin it to Start to reopen it any time; the path never
+into `%USERPROFILE%\.claude\mood-buddy\app\` (about 10 seconds) and tells you how to start it:
+press Win+R, paste the path (it's put on your clipboard where the app allows), Enter. Pin it to Start to reopen it any time; the path never
 changes, and `/buddy desktop` rebuilds it there only when a plugin update changes it. The mod
 writes each mood, with its drawing, to `%USERPROFILE%\.claude\mood-buddy\state.json`, and the
 window redraws whenever that file changes.

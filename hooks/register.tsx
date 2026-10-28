@@ -208,7 +208,7 @@ async function requestOverlayQuit($: EngineInterface): Promise<void> {
 
 // Builds the desktop buddy into ~/.claude/mood-buddy/app (the same place for
 // every session and plugin version, so a pinned shortcut keeps working), again
-// only when its sources change, then shows it in File Explorer. It is opened by
+// only when its sources change, and says how to start it. It is started by
 // the person, not from here: a program Claude Code starts can run sandboxed,
 // and WebView2 can't start its own processes there.
 async function prepareOverlay($: EngineInterface): Promise<string> {
@@ -244,11 +244,15 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
     await $.fs.write(fingerprintFile, fingerprint)
     intro = hasExe ? 'Updated the desktop buddy (it closed to update; open it again). ' : 'Built the desktop buddy. '
   }
-  // Explorer opens its window in the person's own session, outside any sandbox.
-  await $.process.run(['explorer.exe', `/select,${exe}`]).catch(() => undefined)
+  // Win+R runs the program in the person's own session; the path goes on the
+  // clipboard where the surface allows, so it is three keys.
+  const copied = await $.ui.copy({ text: exe }).catch(() => ({ isCopied: false }))
+  const open = copied.isCopied
+    ? 'To start it: press Win+R, then Ctrl+V (the path is on your clipboard), then Enter.'
+    : `To start it: press Win+R, paste ${exe}, then press Enter.`
   return [
-    `${intro}Double-click MoodBuddy.exe in the File Explorer window to put the buddy on your desktop.`,
-    `It's at ${exe}; pin it to Start to reopen it any time.`,
+    `${intro}${open}`,
+    `It lives at ${exe}; pin it to Start from File Explorer to reopen it with a click.`,
     'It follows your Claude sessions while it runs; right-click it or run /buddy desktop off to close it.',
   ].join('\n')
 }
