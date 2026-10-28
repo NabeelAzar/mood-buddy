@@ -216,13 +216,17 @@ function publish($: EngineInterface): void {
     svg: sprite(currentSkin, current, currentAntic),
     at: Date.now(),
   })
-  writing = writing.then(async () => {
-    try {
-      await $.fs.write(file, text)
-    } catch {
-      // The desktop buddy just keeps the last mood it read.
-    }
-  })
+  writing = writeAfter($, writing, file, text)
+}
+
+// Writes in order, each after the one before, so an older mood never lands last.
+async function writeAfter($: EngineInterface, previous: Promise<void>, file: string, text: string): Promise<void> {
+  await previous
+  try {
+    await $.fs.write(file, text)
+  } catch {
+    // The desktop buddy just keeps the last mood it read.
+  }
 }
 
 const PLUGIN_ROOT = pluginRootFrom((import.meta as { url?: string }).url)
@@ -231,7 +235,11 @@ const PLUGIN_ROOT = pluginRootFrom((import.meta as { url?: string }).url)
 const OVERLAY_SOURCES = ['MoodBuddy.cs', 'index.html', 'renderer.js', 'build.cmd'] as const
 
 async function overlayFingerprint($: EngineInterface, sourceDir: string): Promise<string> {
-  const texts = await Promise.all(OVERLAY_SOURCES.map(name => $.fs.read(`${sourceDir}/${name}`)))
+  const texts: string[] = []
+  for (const name of OVERLAY_SOURCES) {
+    const text = await $.fs.read(`${sourceDir}/${name}`)
+    texts.push(text)
+  }
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texts.join('\u0000')))
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')
 }
