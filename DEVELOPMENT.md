@@ -89,7 +89,10 @@ buddy to quit first (the exe is locked while it runs), then copies the exe's pat
 `build.cmd` uses the .NET Framework's own `csc.exe` (C# 5, so no string interpolation or `?.`),
 downloads the WebView2 SDK from nuget.org checked against a pinned SHA-256, and calls System32's
 `curl`, `certutil` and `tar` by full path, because Git for Windows puts a GNU `tar` on PATH that
-reads `C:` as a host. `.gitattributes` keeps `*.cmd` checked out with CRLF line endings.
+reads `C:` as a host. It has no labels, `call`s or `goto`s, the part of a batch file that breaks
+with Unix line endings, so it runs whichever line endings git checks it out with. Don't add a
+`.gitattributes` to fix line endings instead: the Claude directory refuses to validate a
+repository whose `.gitattributes` rewrites file contents (`eol=crlf` included).
 
 ## Gotchas
 
