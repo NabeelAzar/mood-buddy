@@ -93,7 +93,8 @@ const COMMANDS: readonly (readonly [string, string])[] = [
 
 // The status line shows on every surface, panes or not.
 function showStatus($: EngineInterface): void {
-  $.ui.status(isHidden ? undefined : `${face(currentSkin, current, currentAntic)} ${currentBubble}`)
+  const line = isHidden ? undefined : `${face(currentSkin, current, currentAntic)} ${currentBubble}`
+  $.ui.status(line)
 }
 
 async function setHidden($: EngineInterface, hidden: boolean): Promise<void> {
@@ -237,7 +238,8 @@ const OVERLAY_SOURCES = ['MoodBuddy.cs', 'index.html', 'renderer.js', 'build.cmd
 async function overlayFingerprint($: EngineInterface, sourceDir: string): Promise<string> {
   const texts: string[] = []
   for (const name of OVERLAY_SOURCES) {
-    const text = await $.fs.read(`${sourceDir}/${name}`)
+    const path = `${sourceDir}/${name}`
+    const text = await $.fs.read(path)
     texts.push(text)
   }
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texts.join('\u0000')))
@@ -246,7 +248,9 @@ async function overlayFingerprint($: EngineInterface, sourceDir: string): Promis
 
 async function requestOverlayQuit($: EngineInterface): Promise<void> {
   if (stateDir === undefined) return
-  await $.fs.write(`${stateDir}/control.json`, JSON.stringify({ action: 'quit', at: Date.now() }))
+  const file = `${stateDir}/control.json`
+  const request = JSON.stringify({ action: 'quit', at: Date.now() })
+  await $.fs.write(file, request)
 }
 
 // Builds the desktop buddy into ~/.claude/mood-buddy/app (the same place for
@@ -279,16 +283,15 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
       await $.clock.sleep(1500)
     }
     // `call` keeps cmd from stripping the quotes around paths with spaces.
-    const built = await $.process.run(
-      ['cmd.exe', '/d', '/c', 'call', windowsPath(`${sourceDir}/build.cmd`), windowsPath(appDir)],
-      { timeoutMs: 180_000 },
-    )
+    const buildScript = windowsPath(`${sourceDir}/build.cmd`)
+    const buildArgs = ['cmd.exe', '/d', '/c', 'call', buildScript, windowsPath(appDir)]
+    const built = await $.process.run(buildArgs, { timeoutMs: 180_000 })
     if (built.exitCode !== 0) {
       const why = `${built.stdout}\n${built.stderr}`.trim().split(/\r?\n/).pop() ?? 'unknown error'
       return [
         `Couldn't build the desktop buddy here (${why}).`,
         'Build it yourself in a Command Prompt, then run /buddy desktop again:',
-        `  "${windowsPath(`${sourceDir}/build.cmd`)}" "${windowsPath(appDir)}"`,
+        `  "${buildScript}" "${windowsPath(appDir)}"`,
       ].join('\n')
     }
     await $.fs.write(fingerprintFile, fingerprint)
