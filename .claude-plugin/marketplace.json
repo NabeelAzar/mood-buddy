@@ -1,5 +1,6 @@
 {
   "name": "mood-buddy",
+  "description": "mood-buddy: a cute cat or robot that acts out Claude's mood while it works",
   "owner": { "name": "NabeelAzar" },
   "plugins": [{ "name": "mood-buddy", "source": "./" }]
 }

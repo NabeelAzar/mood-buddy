@@ -12,6 +12,34 @@ the mood changes.
 
 I've found it handy to run in one chat while working in another.  The sidekick activities let's me know what's happening there in a visual way.
 
+Works in Claude Code: the terminal, the IDE extensions, and the Claude desktop app's Code tab.
+The optional desktop buddy is Windows 10 and 11 only.
+
+## What it does on your computer
+
+mood-buddy sends nothing anywhere, calls no model, and collects no telemetry.
+
+- **What it reads**: the events of your Claude Code sessions as they happen (a prompt was sent,
+  Claude is thinking, which tool runs and whether it failed, the turn ended) and the last 400
+  characters of Claude's reply as it streams. It keeps these in memory only, to pick a mood.
+- **What it stores**: your character choice and whether you hid the buddy, in Claude Code's plugin
+  storage. In `%USERPROFILE%\.claude\mood-buddy\` (`~/.claude/mood-buddy/` elsewhere) it writes
+  `state.json` (the current mood, its speech-bubble line, the character, and its drawing; never
+  any conversation text) and `control.json` (a request for the desktop buddy to close).
+- **What it downloads**: nothing, unless you run `/buddy desktop`. Its first build downloads
+  Microsoft's WebView2 SDK, version 1.0.2903.40, from nuget.org, and checks it against a pinned
+  SHA-256 before using it.
+- **What it runs**: only for `/buddy desktop`, `desktop\build.cmd` through `cmd.exe`, which runs
+  Windows' own C# compiler, `curl`, `certutil` and `tar`. It builds the desktop buddy from the
+  source in this repository into `%USERPROFILE%\.claude\mood-buddy\app\`, and puts that
+  program's path on your clipboard. It never starts the program; you do.
+- **The desktop buddy** (`MoodBuddy.exe`, built from `desktop\MoodBuddy.cs`): shows a page bundled
+  with it (it fetches nothing from the internet), reads `state.json`, and saves its window
+  position to `window.txt` and its browser profile to `webview2\` in the same folder. To let you
+  drag the buddy and right-click it while clicks elsewhere pass through, it uses a Windows
+  low-level mouse hook. The hook sees where the pointer is and which button is pressed, acts only
+  on presses over the cat or its speech bubble, and never records or sends anything.
+
 ## Install
 
 At the prompt of a Claude Code terminal session:
@@ -29,7 +57,7 @@ claude plugin install mood-buddy --marketplace NabeelAzar/mood-buddy
 In the Claude desktop app, where `/plugin` doesn't run: click + next to the prompt box, then
 Plugins, Add marketplace with `NabeelAzar/mood-buddy`, then Add plugin.
 
-The repository is private, so it installs only for people who can read it on GitHub and whose
+While the repository is private, it installs only for people who can read it on GitHub and whose
 computer already has a git login for github.com (an SSH key, or `gh auth login` then
 `gh auth setup-git`): the install never asks for one.
 
@@ -70,8 +98,9 @@ two antics, and dozes off again.
 
 Run `/buddy desktop`. The first time, it builds a small always-on-top window with the same buddy
 into `%USERPROFILE%\.claude\mood-buddy\app\` (about 10 seconds) and tells you how to start it:
-press Win+R, paste the path (it's put on your clipboard where the app allows), Enter. Pin it to Start to reopen it any time; the path never
-changes, and `/buddy desktop` rebuilds it there only when a plugin update changes it. The mod
+press Win+R, paste the path (it's put on your clipboard where the app allows), Enter. Pin it to
+Start to reopen it any time; the path never changes, and `/buddy desktop` rebuilds it there only
+when a plugin update changes it. The mod
 writes each mood, with its drawing, to `%USERPROFILE%\.claude\mood-buddy\state.json`, and the
 window redraws whenever that file changes.
 

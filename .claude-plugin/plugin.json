@@ -1,7 +1,10 @@
 {
   "name": "mood-buddy",
-  "version": "0.1.0",
-  "description": "A cute cat or robot in a side pane that acts out Claude's mood, using rules only (no model calls)",
+  "version": "1.0.0",
+  "description": "A cute cat or robot in a side pane (or on your Windows desktop) that acts out Claude's mood, using rules only (no model calls)",
+  "author": { "name": "Nabeel Azar", "url": "https://github.com/NabeelAzar" },
+  "homepage": "https://github.com/NabeelAzar/mood-buddy",
+  "repository": "https://github.com/NabeelAzar/mood-buddy",
   "types": "./types/index.d.ts",
   "license": "MIT"
 }
