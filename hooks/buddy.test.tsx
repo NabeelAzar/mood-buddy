@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 
 import { classifyText, toolMood } from './moods'
 import { ANTICS } from './antics'
+import { pluginRootFrom } from './paths'
 import { sprite } from './sprites'
 
 describe('classifyText', () => {
@@ -38,6 +39,14 @@ test('every antic draws as an svg, only on its own character', async () => {
     }
   }
   expect(sprite('robot', 'idle', 'groom')).toBe(sprite('robot', 'idle'))
+})
+
+test("the plugin's folder comes from a module's address", async () => {
+  expect(pluginRootFrom('file:///C:/Users/a/.claude/plugins/mood-buddy/hooks/register.tsx')).toBe('C:/Users/a/.claude/plugins/mood-buddy')
+  expect(pluginRootFrom('file:///C:/Users/John%20Smith/.claude/mood-buddy/hooks/register.tsx')).toBe('C:/Users/John Smith/.claude/mood-buddy')
+  expect(pluginRootFrom('file:///home/a/.claude/mood-buddy/hooks/register.tsx')).toBe('/home/a/.claude/mood-buddy')
+  expect(pluginRootFrom(undefined)).toBe(undefined)
+  expect(pluginRootFrom('https://example.com/register.tsx')).toBe(undefined)
 })
 
 test('every skin draws every mood as an svg', async () => {

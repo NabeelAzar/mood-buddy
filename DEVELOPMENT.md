@@ -49,6 +49,7 @@ are ignored.
 | `hooks/register.tsx` | all hooks: session start, `/buddy` command, prompt, `turn.step` stream, tool calls, turn end, pane and band rendering, the idle and sleep cycle, and `/buddy desktop` |
 | `hooks/moods.ts` | keyword rules, weights, threshold, tool→mood map, speech-bubble lines |
 | `hooks/antics.ts` | idle antics (5 cat, 6 robot), the two wake-ups and the two dreams: pose changes, SVG overlay, length |
+| `hooks/paths.ts` | the plugin's folder, worked out from the module's own `import.meta.url`, and Windows path spelling |
 | `hooks/sprites.ts` | the pose per mood and the cat and robot SVG builders. Animation is SMIL inside the SVG, so the pane redraws only on mood changes. Also the text faces for the terminal. |
 | `types/index.d.ts` | state contract: `mood`, `skin` and `hidden` atoms under `mood-buddy` |
 | `desktop/` | the desktop buddy: `MoodBuddy.cs` (C# 5 WinForms + WebView2), `index.html` + `renderer.js` (the page it shows), `build.cmd [folder]` |
@@ -97,6 +98,14 @@ to fix line endings instead: the Claude directory refuses to validate a reposito
 `.gitattributes` rewrites file contents (`eol=crlf` included).
 
 ## Gotchas
+
+- The Claude directory reads a mod's use of `$` from the source and accepts only two forms: a
+  plain call `$.noun.method(...)` with nothing wrapped around its parts, and `$` passed whole to a
+  function declared at the top level of the same file. So no `(await $.x.y())`, no `.catch`
+  chained on a call or on `on(...)`, no `$.plugin.root` (a property, not a call; `hooks/paths.ts`
+  works the folder out from `import.meta.url` instead), and no passing `$` to imported helpers
+  such as the library's `read`/`update` (the `readMood`/`writeMood` helpers call `$.state`
+  directly). `claude plugin validate` doesn't check this; the developer portal's **Validate** does.
 
 - Plugin names can't start with `claude-`, which is why it's `mood-buddy`.
 - `$.ui.open` returns `{ isPlaced, reason }`. Panes opened without the person asking only appear

@@ -3,6 +3,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import type { Antic, BuddyMood, Mood, Skin } from '../types'
 import { ANTICS, ANTIC_LOOKS, WAKE_ANTIC } from './antics'
 import { STRONG, anticLine, classifyText, lineFor, toolMood } from './moods'
+import { pluginRootFrom, windowsPath } from './paths'
 import { face, sprite } from './sprites'
 
 const PANE = 'mood-buddy'
@@ -215,10 +216,16 @@ function publish($: EngineInterface): void {
     svg: sprite(currentSkin, current, currentAntic),
     at: Date.now(),
   })
-  writing = writing.then(() => $.fs.write(file, text)).catch(() => undefined)
+  writing = writing.then(async () => {
+    try {
+      await $.fs.write(file, text)
+    } catch {
+      // The desktop buddy just keeps the last mood it read.
+    }
+  })
 }
 
-const windowsPath = (path: string) => path.replaceAll('/', '\\')
+const PLUGIN_ROOT = pluginRootFrom((import.meta as { url?: string }).url)
 
 // What the desktop buddy is built from; when any of these change, it is rebuilt.
 const OVERLAY_SOURCES = ['MoodBuddy.cs', 'index.html', 'renderer.js', 'build.cmd'] as const
@@ -240,15 +247,22 @@ async function requestOverlayQuit($: EngineInterface): Promise<void> {
 // the person, not from here: a program Claude Code starts can run sandboxed,
 // and WebView2 can't start its own processes there.
 async function prepareOverlay($: EngineInterface): Promise<string> {
-  if ((await $.env.get('OS')) !== 'Windows_NT') return 'The desktop buddy is Windows-only for now.'
+  const os = await $.env.get('OS')
+  if (os !== 'Windows_NT') return 'The desktop buddy is Windows-only for now.'
   if (stateDir === undefined) return "The desktop buddy can't be set up here: USERPROFILE isn't set."
-  const sourceDir = `${$.plugin.root}/desktop`
+  if (PLUGIN_ROOT === undefined) return "The desktop buddy can't be set up here: this plugin's folder isn't known."
+  const sourceDir = `${PLUGIN_ROOT}/desktop`
   const appDir = `${stateDir}/app`
   const exe = windowsPath(`${appDir}/MoodBuddy.exe`)
   const fingerprintFile = `${appDir}/source.sha256`
   const fingerprint = await overlayFingerprint($, sourceDir)
   const hasExe = await $.fs.exists(exe)
-  const builtFrom = hasExe && (await $.fs.exists(fingerprintFile)) ? (await $.fs.read(fingerprintFile)).trim() : ''
+  const hasFingerprint = await $.fs.exists(fingerprintFile)
+  let builtFrom = ''
+  if (hasExe && hasFingerprint) {
+    const recorded = await $.fs.read(fingerprintFile)
+    builtFrom = recorded.trim()
+  }
   let intro = ''
   if (builtFrom !== fingerprint) {
     // A running buddy locks its program file, so it is asked to close first.
@@ -274,8 +288,14 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
   }
   // Win+R runs the program in the person's own session; the path goes on the
   // clipboard where the surface allows, so it is three keys.
-  const copied = await $.ui.copy({ text: exe }).catch(() => ({ isCopied: false }))
-  const open = copied.isCopied
+  let isCopied = false
+  try {
+    const copied = await $.ui.copy({ text: exe })
+    isCopied = copied.isCopied
+  } catch {
+    isCopied = false
+  }
+  const open = isCopied
     ? 'To start it: press Win+R, then Ctrl+V (the path is on your clipboard), then Enter.'
     : `To start it: press Win+R, paste ${exe}, then press Enter.`
   return [
@@ -304,7 +324,8 @@ function openPane($: EngineInterface) {
 }
 
 async function isPanePlaced($: EngineInterface): Promise<boolean> {
-  return (await $.ui.panes()).some(pane => pane.id === PANE && pane.isPlaced)
+  const panes = await $.ui.panes()
+  return panes.some(pane => pane.id === PANE && pane.isPlaced)
 }
 
 export const register: Register = on => {
@@ -314,7 +335,8 @@ export const register: Register = on => {
       description: 'Show the mood buddy; "/buddy help" lists the options',
       argumentHint: '[cat | robot | off | desktop | desktop off | status | help]',
     })
-    isHidden = (await $.store.get('hidden')) === true
+    const savedHidden = await $.store.get('hidden')
+    isHidden = savedHidden === true
     await writeHidden($, isHidden)
     // Under ~/.claude, which a sandboxed Claude Code still writes for real, so
     // the overlay outside the sandbox sees the same file.
@@ -374,7 +396,7 @@ export const register: Register = on => {
     void setMood($, 'listening', true)
 
     return next(e)
-  }).catch(($, e, next) => next(e))
+  })
 
   on('turn.step', async function* ($, e, next) {
     // Subagents' steps are background work; the buddy follows the main thread.
@@ -405,7 +427,7 @@ export const register: Register = on => {
     if (ran.isError === true) void setMood($, 'oops')
 
     return ran
-  }).catch(($, e, next) => next(e))
+  })
 
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
