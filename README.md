@@ -28,10 +28,12 @@ events. None of them changes, blocks or delays what Claude does; each only watch
 - `session.start`: adds the `/buddy` command, reads your saved character and whether you hid the
   buddy, and opens the Buddy pane.
 - `command.run` for `/buddy`: answers the `/buddy` commands listed under [Use](#use).
-- `prompt.submit`: shows the "listening" mood when you send a message.
+- `prompt.submit`: shows the "listening" mood when you send a message. It doesn't read the
+  message.
 - `turn.step`: as Claude's reply streams, shows "thinking", "talking" or a tool mood, and scores
   the last 400 characters of the reply against the keyword rules in `hooks/moods.ts`. The reply
-  passes through unchanged.
+  passes through unchanged. This is the only conversation text the mod sees, and it's kept in
+  memory only.
 - `tool.call`: shows "working" or "searching" by the tool's name, and "oops" if the tool fails.
   The call passes through unchanged.
 - `turn.complete`: shows "happy" ("disapproving" after a refusal, "oops" after an error), then
@@ -42,8 +44,13 @@ It adds one command, `/buddy`, and no tools or agents.
 
 ### What it reads
 
-The events above, kept in memory only, to pick a mood. Nothing else: no environment variables,
-credentials or other files. It finds `~/.claude` from the folder it's installed in.
+The events above, kept in memory only, to pick a mood. It finds `~/.claude` from the folder it's
+installed in, and reads no environment variables or credentials.
+
+Only for `/buddy desktop`, it reads five files of its own: the desktop buddy's four source files
+in this plugin (`desktop\MoodBuddy.cs`, `index.html`, `renderer.js`, `build.cmd`) and
+`~/.claude/mood-buddy/app/source.sha256`, to tell whether the desktop buddy needs rebuilding.
+What it reads stays in the mod: it is only hashed and compared.
 
 ### What it writes
 
@@ -64,6 +71,10 @@ Nothing leaves your computer. Inside it: the mood goes to Claude Code's status l
 to `state.json` for the desktop buddy. `/buddy desktop` puts the desktop buddy's path on your
 clipboard (Claude Code's `$.ui.copy` call, which writes the clipboard of the app you're using) so
 you can paste it into Win+R.
+
+The build command (below) is given only two folder paths, the build script's and the folder to
+build into; nothing the mod reads is passed to it. No conversation text goes anywhere: not to the
+build command, not to `state.json`, not to any file.
 
 ### What programs it runs, and why
 

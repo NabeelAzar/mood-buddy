@@ -286,16 +286,17 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
       await requestOverlayQuit($)
       await $.clock.sleep(1500)
     }
-    // `call` keeps cmd from stripping the quotes around paths with spaces.
+    // `call` keeps cmd from stripping the quotes around paths with spaces. The two
+    // paths are this plugin's build script and the folder to build into.
     const buildScript = windowsPath(`${sourceDir}/build.cmd`)
-    const buildArgs = ['cmd.exe', '/d', '/c', 'call', buildScript, windowsPath(appDir)]
-    const built = await $.process.run(buildArgs, { timeoutMs: 180_000 })
+    const buildInto = windowsPath(appDir)
+    const built = await $.process.run(['cmd.exe', '/d', '/c', 'call', buildScript, buildInto], { timeoutMs: 180_000 })
     if (built.exitCode !== 0) {
       const why = `${built.stdout}\n${built.stderr}`.trim().split(/\r?\n/).pop() ?? 'unknown error'
       return [
         `Couldn't build the desktop buddy here (${why}).`,
         'Build it yourself in a Command Prompt, then run /buddy desktop again:',
-        `  "${buildScript}" "${windowsPath(appDir)}"`,
+        `  "${buildScript}" "${buildInto}"`,
       ].join('\n')
     }
     await $.fs.write(fingerprintFile, fingerprint)
