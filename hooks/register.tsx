@@ -290,20 +290,20 @@ async function prepareOverlay($: EngineInterface): Promise<string> {
   } catch {
     isCopied = false
   }
-  const keys = isCopied
+  const howToRun = isCopied
     ? 'press Win+R, then Ctrl+V (it\'s on your clipboard), then Enter.'
     : `press Win+R, paste this, then press Enter:\n  ${command}`
   const about = 'It follows your Claude sessions while it runs; right-click it or run /buddy desktop off to close it.'
   if (isCurrent) {
     return [
-      `To start the desktop buddy, ${keys}`,
+      `To start the desktop buddy, ${howToRun}`,
       `It lives at ${exe}; pin it to Start from File Explorer to reopen it with a click.`,
       about,
     ].join('\n')
   }
   const what = hasExe ? 'This plugin has a newer desktop buddy.' : "The desktop buddy isn't built yet."
   return [
-    `${what} To build and start it, ${keys}`,
+    `${what} To build and start it, ${howToRun}`,
     'A window builds it from this plugin\'s source (about 10 seconds; the first time it also downloads',
     "Microsoft's WebView2 SDK from nuget.org), closing a running buddy first, then starts it.",
     about,
