@@ -22,9 +22,12 @@ const HOLD_MS = 3500
 const HAPPY_MS = 2500
 const SLEEP_MS = 90_000
 // While idle, an antic starts after a random wait in this range.
-const ANTIC_WAIT_MS = [20_000, 40_000] as const
-// Asleep, it wakes after a random wait in this range for a stretch and one antic.
-const WAKE_WAIT_MS = [180_000, 360_000] as const
+const ANTIC_WAIT_MS = [15_000, 25_000] as const
+// Asleep, it wakes after a random wait in this range, stretches, plays
+// WAKE_ANTICS antics with a short pause between them, and dozes off again.
+const WAKE_WAIT_MS = [60_000, 120_000] as const
+const WAKE_ANTICS = 2
+const WAKE_PAUSE_MS = 3000
 // How much new reply text arrives before it is scored again.
 const RESCORE_CHARS = 40
 const WINDOW_CHARS = 400
@@ -44,6 +47,8 @@ let isHidden = false
 let currentAntic: Antic | undefined
 let lastAntic: Antic | undefined
 let anticTimer: Timer | undefined
+// Nap time came while an antic was playing: sleep once it finishes.
+let isSleepDue = false
 
 // Listed by "/buddy help" and under the buddy in the pane.
 const COMMANDS: readonly (readonly [string, string])[] = [
@@ -84,7 +89,14 @@ async function setMood($: EngineInterface, mood: Mood, isForced = false): Promis
   else if (isForced) holdUntil = 0
 
   sleep?.cancel()
-  sleep = mood === 'sleepy' ? undefined : $.clock.after(SLEEP_MS, () => void setMood($, 'sleepy', true))
+  isSleepDue = false
+  sleep =
+    mood === 'sleepy'
+      ? undefined
+      : $.clock.after(SLEEP_MS, () => {
+          if (currentAntic === undefined) void setMood($, 'sleepy', true)
+          else isSleepDue = true
+        })
 
   // Anything that happens ends an antic; settling into idle lines up the next,
   // falling asleep lines up the next wake-up.
@@ -118,9 +130,11 @@ function scheduleAntic($: EngineInterface): void {
   anticTimer = $.clock.after(least + Math.random() * (most - least), () => void playAntic($))
 }
 
-// Picks one of the character's antics (not the last one) and shows it for its
-// length; then waits for the next one, or after a wake-up dozes off again.
-async function playAntic($: EngineInterface, isThenAsleep = false): Promise<void> {
+// Picks one of the character's antics (not the last one) and plays it to the
+// end. Awake, the next one follows a wait, or a nap if one came due meanwhile.
+// During a wake-up, `wakeLeft` counts this antic and the ones still to come;
+// after the last, it dozes off again.
+async function playAntic($: EngineInterface, wakeLeft?: number): Promise<void> {
   if (current !== 'idle') return
   const choices = ANTICS[currentSkin].filter(antic => antic !== lastAntic)
   const antic = choices[Math.floor(Math.random() * choices.length)]
@@ -129,11 +143,18 @@ async function playAntic($: EngineInterface, isThenAsleep = false): Promise<void
   currentAntic = antic
   anticTimer = $.clock.after(ANTIC_LOOKS[antic].ms, () => {
     currentAntic = undefined
-    if (isThenAsleep) {
+    if (wakeLeft !== undefined) {
+      if (wakeLeft <= 1) {
+        void setMood($, 'sleepy', true)
+        return
+      }
+      anticTimer = $.clock.after(WAKE_PAUSE_MS, () => void playAntic($, wakeLeft - 1))
+    } else if (isSleepDue) {
       void setMood($, 'sleepy', true)
       return
+    } else {
+      scheduleAntic($)
     }
-    scheduleAntic($)
     void show($, lineFor('idle'))
   })
   await show($, anticLine(antic))
@@ -144,13 +165,13 @@ function scheduleWake($: EngineInterface): void {
   anticTimer = $.clock.after(least + Math.random() * (most - least), () => void wake($))
 }
 
-// Now and then a napping buddy wakes, stretches, plays one antic and dozes off again.
+// Now and then a napping buddy wakes, stretches, plays a couple of antics and dozes off again.
 async function wake($: EngineInterface): Promise<void> {
   if (current !== 'sleepy') return
   current = 'idle'
   const stretch = WAKE_ANTIC[currentSkin]
   currentAntic = stretch
-  anticTimer = $.clock.after(ANTIC_LOOKS[stretch].ms, () => void playAntic($, true))
+  anticTimer = $.clock.after(ANTIC_LOOKS[stretch].ms, () => void playAntic($, WAKE_ANTICS))
   await show($, anticLine(stretch))
 }
 

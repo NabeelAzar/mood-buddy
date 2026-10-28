@@ -36,10 +36,11 @@ For the desktop buddy, run `desktop\build.cmd` once after installing; it builds
 
 ## Idle antics
 
-While nothing is happening, every 20 to 40 seconds the buddy plays a little scene of its own for a
-few seconds, and stops the moment anything happens. After 90 seconds it falls asleep and dreams.
-Every 3 to 6 minutes it wakes up (the cat with a yawn and a big stretch, the robot powering up
-with a creak), plays one antic, and dozes off again.
+While nothing is happening, every 15 to 25 seconds the buddy plays a little scene of its own for
+5 to 10 seconds, and stops the moment anything happens. About 90 seconds after the last activity
+it falls asleep and dreams (letting an antic that's playing finish first). Every 1 to 2 minutes
+it wakes up (the cat with a yawn and a big stretch, the robot powering up with a creak), plays
+two antics, and dozes off again.
 
 - Cat: grooms, bats a ball of yarn, watches and pounces on a butterfly, pushes a cup off a table,
   loafs and purrs. Dreams of a mouse.
