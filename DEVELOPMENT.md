@@ -86,13 +86,15 @@ only when the SHA-256 of the four desktop sources changes (`source.sha256`). It 
 buddy to quit first (the exe is locked while it runs), then copies the exe's path with
 `$.ui.copy` and says to press Win+R.
 
-`build.cmd` uses the .NET Framework's own `csc.exe` (C# 5, so no string interpolation or `?.`),
-downloads the WebView2 SDK from nuget.org checked against a pinned SHA-256, and calls System32's
-`curl`, `certutil` and `tar` by full path, because Git for Windows puts a GNU `tar` on PATH that
-reads `C:` as a host. It has no labels, `call`s or `goto`s, the part of a batch file that breaks
-with Unix line endings, so it runs whichever line endings git checks it out with. Don't add a
-`.gitattributes` to fix line endings instead: the Claude directory refuses to validate a
-repository whose `.gitattributes` rewrites file contents (`eol=crlf` included).
+`build.cmd` compiles with the .NET Framework's own C# compiler, which takes C# 5 only (no string
+interpolation, no `?.`). The comments at its top say how it fetches and checks the WebView2 SDK.
+It names the System32 copies of the Windows tools it uses by full path, because Git for Windows
+puts a GNU `tar` on PATH that reads `C:` as a host name.
+
+`build.cmd` has no labels, `call`s or `goto`s, the part of a batch file that breaks with Unix line
+endings, so it works whichever line endings git checks it out with. Don't add a `.gitattributes`
+to fix line endings instead: the Claude directory refuses to validate a repository whose
+`.gitattributes` rewrites file contents (`eol=crlf` included).
 
 ## Gotchas
 

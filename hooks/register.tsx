@@ -1,4 +1,3 @@
-import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Antic, BuddyMood, Mood, Skin } from '../types'
@@ -9,13 +8,42 @@ import { face, sprite } from './sprites'
 const PANE = 'mood-buddy'
 const TITLE = 'Buddy'
 
-// Change a tag when its value's fields change: it declines what an earlier
-// version stored, which outlives a reload.
-const moodAtom = atom({ plugin: 'mood-buddy', key: 'mood' } as const, { mood: 'idle', bubble: '' } as BuddyMood, {
-  shape: 'mood-2',
-})
-const skinAtom = atom({ plugin: 'mood-buddy', key: 'skin' } as const, 'cat' as Skin, { shape: 'skin-1' })
-const hiddenAtom = atom({ plugin: 'mood-buddy', key: 'hidden' } as const, false as boolean, { shape: 'hidden-1' })
+// The values the drawings read, in $.state. Each is kept with a shape tag:
+// change a tag when its value's fields change, so a reload reads what an
+// earlier version stored as absent.
+const MOOD = { plugin: 'mood-buddy', key: 'mood' } as const
+const SKIN = { plugin: 'mood-buddy', key: 'skin' } as const
+const HIDDEN = { plugin: 'mood-buddy', key: 'hidden' } as const
+const MOOD_SHAPE = 'mood-2'
+const SKIN_SHAPE = 'skin-1'
+const HIDDEN_SHAPE = 'hidden-1'
+
+async function readMood($: EngineInterface): Promise<BuddyMood> {
+  const { value } = await $.state.get(MOOD)
+  return value?.shape === MOOD_SHAPE ? value.value : { mood: 'idle', bubble: '' }
+}
+
+async function writeMood($: EngineInterface, mood: BuddyMood): Promise<void> {
+  await $.state.set(MOOD, { shape: MOOD_SHAPE, value: mood })
+}
+
+async function readSkin($: EngineInterface): Promise<Skin> {
+  const { value } = await $.state.get(SKIN)
+  return value?.shape === SKIN_SHAPE ? value.value : 'cat'
+}
+
+async function writeSkin($: EngineInterface, skin: Skin): Promise<void> {
+  await $.state.set(SKIN, { shape: SKIN_SHAPE, value: skin })
+}
+
+async function readHidden($: EngineInterface): Promise<boolean> {
+  const { value } = await $.state.get(HIDDEN)
+  return value?.shape === HIDDEN_SHAPE ? value.value : false
+}
+
+async function writeHidden($: EngineInterface, hidden: boolean): Promise<void> {
+  await $.state.set(HIDDEN, { shape: HIDDEN_SHAPE, value: hidden })
+}
 
 // How long a mood read from the reply's words holds against busier moods.
 const HOLD_MS = 3500
@@ -69,7 +97,7 @@ function showStatus($: EngineInterface): void {
 
 async function setHidden($: EngineInterface, hidden: boolean): Promise<void> {
   isHidden = hidden
-  await update($, hiddenAtom, () => hidden)
+  await writeHidden($, hidden)
   showStatus($)
   await $.store.set('hidden', hidden)
 }
@@ -116,7 +144,7 @@ async function show($: EngineInterface, bubble: string): Promise<void> {
   publish($)
   const mood = current
   const antic = currentAntic
-  await update($, moodAtom, () => (antic === undefined ? { mood, bubble } : { mood, bubble, antic }))
+  await writeMood($, antic === undefined ? { mood, bubble } : { mood, bubble, antic })
 }
 
 function stopAntics(): void {
@@ -267,7 +295,7 @@ async function setSkin($: EngineInterface, skin: Skin, isSaved = true): Promise<
     publish($)
     showStatus($)
   }
-  await update($, skinAtom, () => skin)
+  await writeSkin($, skin)
   if (isSaved) await $.store.set('skin', skin)
 }
 
@@ -287,7 +315,7 @@ export const register: Register = on => {
       argumentHint: '[cat | robot | off | desktop | desktop off | status | help]',
     })
     isHidden = (await $.store.get('hidden')) === true
-    await update($, hiddenAtom, () => isHidden)
+    await writeHidden($, isHidden)
     // Under ~/.claude, which a sandboxed Claude Code still writes for real, so
     // the overlay outside the sandbox sees the same file.
     const home = await $.env.get('USERPROFILE')
@@ -404,8 +432,8 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const { Box, Text, Button } = ui
-    const { mood, bubble, antic } = await read($, moodAtom)
-    const skin = await read($, skinAtom)
+    const { mood, bubble, antic } = await readMood($)
+    const skin = await readSkin($)
     const other: Skin = skin === 'cat' ? 'robot' : 'cat'
     const switchSkin = () => setSkin($, other)
 
@@ -442,12 +470,12 @@ export const register: Register = on => {
 
   // Where the pane can't be placed, a small buddy sits above the prompt.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey || (await read($, hiddenAtom)) || (await isPanePlaced($))) return next(e)
+    if (e.props.hasSurvey || (await readHidden($)) || (await isPanePlaced($))) return next(e)
 
     const ui = $.ui.resolve(e)
     const { Box, Text } = ui
-    const { mood, bubble, antic } = await read($, moodAtom)
-    const skin = await read($, skinAtom)
+    const { mood, bubble, antic } = await readMood($)
+    const skin = await readSkin($)
 
     return (
       <Box flexDirection="row" alignItems="center" gap={1}>

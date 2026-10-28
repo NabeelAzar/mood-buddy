@@ -5,6 +5,5 @@
   "author": { "name": "Nabeel Azar", "url": "https://github.com/NabeelAzar" },
   "homepage": "https://github.com/NabeelAzar/mood-buddy",
   "repository": "https://github.com/NabeelAzar/mood-buddy",
-  "types": "./types/index.d.ts",
   "license": "MIT"
 }

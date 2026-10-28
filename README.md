@@ -17,28 +17,78 @@ The optional desktop buddy is Windows 10 and 11 only.
 
 ## What it does on your computer
 
-mood-buddy sends nothing anywhere, calls no model, and collects no telemetry.
+mood-buddy sends nothing over the network, calls no model, and collects no telemetry. Below,
+`~/.claude` means `%USERPROFILE%\.claude` on Windows.
 
-- **What it reads**: the events of your Claude Code sessions as they happen (a prompt was sent,
-  Claude is thinking, which tool runs and whether it failed, the turn ended) and the last 400
-  characters of Claude's reply as it streams. It keeps these in memory only, to pick a mood.
-- **What it stores**: your character choice and whether you hid the buddy, in Claude Code's plugin
-  storage. In `%USERPROFILE%\.claude\mood-buddy\` (`~/.claude/mood-buddy/` elsewhere) it writes
-  `state.json` (the current mood, its speech-bubble line, the character, and its drawing; never
-  any conversation text) and `control.json` (a request for the desktop buddy to close).
-- **What it downloads**: nothing, unless you run `/buddy desktop`. Its first build downloads
-  Microsoft's WebView2 SDK, version 1.0.2903.40, from nuget.org, and checks it against a pinned
-  SHA-256 before using it.
-- **What it runs**: only for `/buddy desktop`, `desktop\build.cmd` through `cmd.exe`, which runs
-  Windows' own C# compiler, `curl`, `certutil` and `tar`. It builds the desktop buddy from the
-  source in this repository into `%USERPROFILE%\.claude\mood-buddy\app\`, and puts that
-  program's path on your clipboard. It never starts the program; you do.
-- **The desktop buddy** (`MoodBuddy.exe`, built from `desktop\MoodBuddy.cs`): shows a page bundled
-  with it (it fetches nothing from the internet), reads `state.json`, and saves its window
-  position to `window.txt` and its browser profile to `webview2\` in the same folder. To let you
-  drag the buddy and right-click it while clicks elsewhere pass through, it uses a Windows
-  low-level mouse hook. The hook sees where the pointer is and which button is pressed, acts only
-  on presses over the cat or its speech bubble, and never records or sends anything.
+### What its hooks do
+
+mood-buddy is a Claude Code mod: code in `hooks/register.tsx` that Claude Code runs on these
+events. None of them changes, blocks or delays what Claude does; each only watches.
+
+- `session.start`: adds the `/buddy` command, reads your saved character and whether you hid the
+  buddy, and opens the Buddy pane.
+- `command.run` for `/buddy`: answers the `/buddy` commands listed under [Use](#use).
+- `prompt.submit`: shows the "listening" mood when you send a message.
+- `turn.step`: as Claude's reply streams, shows "thinking", "talking" or a tool mood, and scores
+  the last 400 characters of the reply against the keyword rules in `hooks/moods.ts`. The reply
+  passes through unchanged.
+- `tool.call`: shows "working" or "searching" by the tool's name, and "oops" if the tool fails.
+  The call passes through unchanged.
+- `turn.complete`: shows "happy" ("disapproving" after a refusal, "oops" after an error), then
+  starts the idle and nap cycle.
+- `ui.render`: draws the Buddy pane, and the small buddy above the prompt when the pane is closed.
+
+It adds one command, `/buddy`, and no tools or agents.
+
+### What it reads
+
+The events above, kept in memory only, to pick a mood. Two environment variables: `USERPROFILE`,
+to find `~/.claude`, and `OS`, to tell whether the desktop buddy can be built (Windows only).
+Nothing else on your machine.
+
+### What it writes
+
+- In Claude Code's plugin storage: your character choice and whether you hid the buddy.
+- `~/.claude/mood-buddy/state.json`: the current mood, its speech-bubble line, the character and
+  its drawing, for the desktop buddy. Never any conversation text.
+- `~/.claude/mood-buddy/control.json`: a request for the desktop buddy to close
+  (`/buddy desktop off`, or before an update).
+- Only for `/buddy desktop`: the desktop buddy program in `~/.claude/mood-buddy/app/`, with
+  `app/lib/` (the WebView2 SDK files) and `app/source.sha256` (which version of the source it was
+  built from).
+
+It writes no build, start-up, settings or instructions file.
+
+### What it sends, and where
+
+Nothing leaves your computer. Inside it: the mood goes to Claude Code's status line and pane, and
+to `state.json` for the desktop buddy. `/buddy desktop` puts the desktop buddy's path on your
+clipboard (Claude Code's `$.ui.copy` call, which writes the clipboard of the app you're using) so
+you can paste it into Win+R.
+
+### What programs it runs, and why
+
+Only when you run `/buddy desktop`, and only if the desktop buddy isn't built yet or this
+plugin's update changed it: `cmd.exe` runs `desktop\build.cmd` from this plugin, to build the
+desktop buddy on your machine from the source in this repository instead of shipping a compiled
+program. `build.cmd` runs only Windows' own programs:
+
+- the .NET Framework C# compiler (`csc.exe`), to compile `desktop\MoodBuddy.cs`;
+- `curl.exe`, once, to download Microsoft's WebView2 SDK, version 1.0.2903.40, from nuget.org;
+- `certutil.exe` and `findstr.exe`, to check that download against a pinned SHA-256 before using
+  it;
+- `tar.exe`, to unpack the three WebView2 files the program needs.
+
+The mod never starts the desktop buddy; you do.
+
+### The desktop buddy
+
+`MoodBuddy.exe`, built from `desktop\MoodBuddy.cs`, shows a page bundled with it (it fetches
+nothing from the internet), reads `state.json` and `control.json`, and saves its window position
+to `window.txt` and its browser profile to `webview2\` in `~/.claude/mood-buddy/`. To let you
+drag the buddy and right-click it while clicks elsewhere pass through, it uses a Windows
+low-level mouse hook. The hook sees where the pointer is and which button is pressed, acts only
+on presses over the cat or its speech bubble, and never records or sends anything.
 
 ## Install
 
