@@ -18,7 +18,7 @@ The optional desktop buddy is Windows 10 and 11 only.
 ## What it does on your computer
 
 mood-buddy sends nothing over the network, calls no model, and collects no telemetry. Below,
-`~/.claude` means `%USERPROFILE%\.claude` on Windows.
+`~/.claude` means Claude Code's `.claude` folder, the one this plugin is installed in.
 
 ### What its hooks do
 
@@ -42,9 +42,8 @@ It adds one command, `/buddy`, and no tools or agents.
 
 ### What it reads
 
-The events above, kept in memory only, to pick a mood. Two environment variables: `USERPROFILE`,
-to find `~/.claude`, and `OS`, to tell whether the desktop buddy can be built (Windows only).
-Nothing else on your machine.
+The events above, kept in memory only, to pick a mood. Nothing else: no environment variables,
+credentials or other files. It finds `~/.claude` from the folder it's installed in.
 
 ### What it writes
 
@@ -83,9 +82,10 @@ The mod never starts the desktop buddy; you do.
 
 ### The desktop buddy
 
-`MoodBuddy.exe`, built from `desktop\MoodBuddy.cs`, shows a page bundled with it (it fetches
-nothing from the internet), reads `state.json` and `control.json`, and saves its window position
-to `window.txt` and its browser profile to `webview2\` in `~/.claude/mood-buddy/`. To let you
+`MoodBuddy.exe`, built from `desktop\MoodBuddy.cs`, shows a page from a file beside it (it
+fetches nothing from the internet), reads `state.json` and `control.json`, and saves its window
+position to `window.txt` and its browser profile to `webview2\` in `~/.claude/mood-buddy/`, the
+folder one up from its own. It reads no environment variables. To let you
 drag the buddy and right-click it while clicks elsewhere pass through, it uses a Windows
 low-level mouse hook. The hook sees where the pointer is and which button is pressed, acts only
 on presses over the cat or its speech bubble, and never records or sends anything.
@@ -147,11 +147,11 @@ two antics, and dozes off again.
 ## On the Windows desktop
 
 Run `/buddy desktop`. The first time, it builds a small always-on-top window with the same buddy
-into `%USERPROFILE%\.claude\mood-buddy\app\` (about 10 seconds) and tells you how to start it:
+into `~/.claude/mood-buddy/app/` (about 10 seconds) and tells you how to start it:
 press Win+R, paste the path (it's put on your clipboard where the app allows), Enter. Pin it to
 Start to reopen it any time; the path never changes, and `/buddy desktop` rebuilds it there only
 when a plugin update changes it. The mod
-writes each mood, with its drawing, to `%USERPROFILE%\.claude\mood-buddy\state.json`, and the
+writes each mood, with its drawing, to `~/.claude/mood-buddy/state.json`, and the
 window redraws whenever that file changes.
 
 - About 820 KB in all: a 15 KB C# program plus Microsoft's WebView2 libraries. It draws with the

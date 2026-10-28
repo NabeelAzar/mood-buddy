@@ -8,4 +8,15 @@ export function pluginRootFrom(moduleUrl: string | undefined): string | undefine
   return /^\/[A-Za-z]:/.test(path) ? path.slice(1) : path
 }
 
+// Claude Code's .claude folder holds every installed plugin, so it is found
+// from the plugin's folder rather than read from the environment. Undefined
+// for a plugin run from anywhere else, as `claude --plugin-dir` can.
+export function claudeDirFrom(pluginRoot: string | undefined): string | undefined {
+  if (pluginRoot === undefined) return undefined
+  const at = pluginRoot.lastIndexOf('/.claude/')
+  return at === -1 ? undefined : pluginRoot.slice(0, at + '/.claude'.length)
+}
+
+export const isWindowsPath = (path: string) => /^[A-Za-z]:\//.test(path)
+
 export const windowsPath = (path: string) => path.replaceAll('/', '\\')

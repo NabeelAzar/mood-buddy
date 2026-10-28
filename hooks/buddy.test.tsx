@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 
 import { classifyText, toolMood } from './moods'
 import { ANTICS } from './antics'
-import { pluginRootFrom } from './paths'
+import { claudeDirFrom, pluginRootFrom } from './paths'
 import { sprite } from './sprites'
 
 describe('classifyText', () => {
@@ -47,6 +47,14 @@ test("the plugin's folder comes from a module's address", async () => {
   expect(pluginRootFrom('file:///home/a/.claude/mood-buddy/hooks/register.tsx')).toBe('/home/a/.claude/mood-buddy')
   expect(pluginRootFrom(undefined)).toBe(undefined)
   expect(pluginRootFrom('https://example.com/register.tsx')).toBe(undefined)
+})
+
+test("Claude Code's folder comes from the plugin's folder", async () => {
+  expect(claudeDirFrom('C:/Users/a/.claude/plugins/cache/mood-buddy/1.0.0')).toBe('C:/Users/a/.claude')
+  expect(claudeDirFrom('C:/Users/a/.claude/dev-mods/abc/mood-buddy')).toBe('C:/Users/a/.claude')
+  expect(claudeDirFrom('/home/a/.claude/plugins/mood-buddy')).toBe('/home/a/.claude')
+  expect(claudeDirFrom('C:/Users/a/Projects/mood-buddy')).toBe(undefined)
+  expect(claudeDirFrom(undefined)).toBe(undefined)
 })
 
 test('every skin draws every mood as an svg', async () => {

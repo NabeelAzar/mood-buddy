@@ -16,6 +16,12 @@ claude plugin validate .
 claude plugin test .
 ```
 
+Run from a folder outside `.claude`, the mod can't find `~/.claude` (it works that out from the
+folder it's installed in, and reads no environment variables), so it doesn't write `state.json`
+and `/buddy desktop` says so. To work on the desktop buddy, load the plugin from under `.claude`,
+or build with `desktop\build.cmd` and start `desktop\build\MoodBuddy.exe` with the mood folder as
+its argument.
+
 Raise `version` in `.claude-plugin/plugin.json` with every release: the Claude directory serves a
 new version only when it goes up.
 
@@ -103,7 +109,7 @@ to fix line endings instead: the Claude directory refuses to validate a reposito
   plain call `$.noun.method(...)` with nothing wrapped around its parts, and `$` passed whole to a
   function declared at the top level of the same file. So no `(await $.x.y())`, no `.catch`
   chained on a call or on `on(...)`, no `$.plugin.root` (a property, not a call; `hooks/paths.ts`
-  works the folder out from `import.meta.url` instead), and no passing `$` to imported helpers
+  works the folder out from `import.meta.url` instead, and `~/.claude` from that), and no passing `$` to imported helpers
   such as the library's `read`/`update` (the `readMood`/`writeMood` helpers call `$.state`
   directly). `claude plugin validate` doesn't check this; the developer portal's **Validate** does.
 
@@ -116,7 +122,7 @@ to fix line endings instead: the Claude directory refuses to validate a reposito
 - Type-check needs the engine's types. Once the plugin loads, the engine writes them to
   `.claude-plugin/types/` and a `tsconfig.json`, and `tsc -p .` works.
 - Claude Code can run its tools, and a mod's `$.process` and `$.fs`, in a sandbox. Seen on
-  Windows: writes under `%LOCALAPPDATA%` went to a private copy that nothing outside could see,
+  Windows: writes under the local app-data folder went to a private copy that nothing outside could see,
   programs it started couldn't start child processes (Chromium helpers died with 0xC0000022), and
   starting `explorer.exe` did nothing. Files under `~/.claude` were real. That's why the desktop
   buddy is started by the person, its files live in `~/.claude/mood-buddy/`, and the path goes on

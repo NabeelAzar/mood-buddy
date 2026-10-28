@@ -3,7 +3,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 import type { Antic, BuddyMood, Mood, Skin } from '../types'
 import { ANTICS, ANTIC_LOOKS, WAKE_ANTIC } from './antics'
 import { STRONG, anticLine, classifyText, lineFor, toolMood } from './moods'
-import { pluginRootFrom, windowsPath } from './paths'
+import { claudeDirFrom, isWindowsPath, pluginRootFrom, windowsPath } from './paths'
 import { face, sprite } from './sprites'
 
 const PANE = 'mood-buddy'
@@ -68,7 +68,6 @@ let settle: Timer | undefined
 let sleep: Timer | undefined
 let release: Timer | undefined
 let currentBubble = ''
-let stateDir: string | undefined
 let writing: Promise<void> = Promise.resolve()
 // "/buddy off" hides the buddy inside Claude (pane, band, status line) until "/buddy";
 // the desktop buddy keeps following the moods.
@@ -231,6 +230,10 @@ async function writeAfter($: EngineInterface, previous: Promise<void>, file: str
 }
 
 const PLUGIN_ROOT = pluginRootFrom((import.meta as { url?: string }).url)
+// Under ~/.claude, which a sandboxed Claude Code still writes for real, so the
+// desktop buddy outside the sandbox sees the same files.
+const CLAUDE_DIR = claudeDirFrom(PLUGIN_ROOT)
+const stateDir = CLAUDE_DIR === undefined ? undefined : `${CLAUDE_DIR}/mood-buddy`
 
 // The SHA-256 of what the desktop buddy is built from (its four source files);
 // when it changes, the buddy is rebuilt.
@@ -252,10 +255,10 @@ async function requestOverlayQuit($: EngineInterface): Promise<void> {
 // the person, not from here: a program Claude Code starts can run sandboxed,
 // and WebView2 can't start its own processes there.
 async function prepareOverlay($: EngineInterface): Promise<string> {
-  const os = await $.env.get('OS')
-  if (os !== 'Windows_NT') return 'The desktop buddy is Windows-only for now.'
-  if (stateDir === undefined) return "The desktop buddy can't be set up here: USERPROFILE isn't set."
-  if (PLUGIN_ROOT === undefined) return "The desktop buddy can't be set up here: this plugin's folder isn't known."
+  if (PLUGIN_ROOT === undefined || stateDir === undefined) {
+    return "The desktop buddy needs mood-buddy installed as a plugin (under Claude Code's .claude folder)."
+  }
+  if (!isWindowsPath(PLUGIN_ROOT)) return 'The desktop buddy is Windows-only for now.'
   const sourceDir = `${PLUGIN_ROOT}/desktop`
   const appDir = `${stateDir}/app`
   const exe = windowsPath(`${appDir}/MoodBuddy.exe`)
@@ -350,10 +353,6 @@ export const register: Register = on => {
     const savedHidden = await $.store.get('hidden')
     isHidden = savedHidden === true
     await writeHidden($, isHidden)
-    // Under ~/.claude, which a sandboxed Claude Code still writes for real, so
-    // the overlay outside the sandbox sees the same file.
-    const home = await $.env.get('USERPROFILE')
-    if (home !== undefined) stateDir = `${home.replaceAll('\\', '/')}/.claude/mood-buddy`
     const saved = await $.store.get('skin')
     if (saved === 'cat' || saved === 'robot') await setSkin($, saved, false)
     if (!isHidden) void openPane($)
@@ -371,7 +370,7 @@ export const register: Register = on => {
     }
     if (choice === 'desktop off') {
       // The overlay runs outside Claude Code, so it is asked to close through a file it watches.
-      if (stateDir === undefined) return { text: "Can't reach the desktop buddy: USERPROFILE isn't set." }
+      if (stateDir === undefined) return { text: "Can't reach the desktop buddy from a plugin run outside Claude Code's .claude folder." }
       await requestOverlayQuit($)
       return { text: 'Asked the desktop buddy to close. It goes within a second if it was running.' }
     }

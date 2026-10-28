@@ -1,5 +1,5 @@
 // The mood buddy on the Windows desktop: a borderless, always-on-top window whose
-// WebView2 draws whatever the mod last wrote to %USERPROFILE%\.claude\mood-buddy\state.json.
+// WebView2 draws whatever the mod last wrote to state.json, one folder up from this program (.claude/mood-buddy).
 // Built with the C# compiler that ships with .NET Framework (C# 5), see build.cmd.
 using System;
 using System.Collections.Generic;
@@ -18,12 +18,14 @@ static class Program
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
 
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
         bool isFirst;
         using (new Mutex(true, "mood-buddy-desktop", out isFirst))
         {
             if (!isFirst) return;
+            // A copy built somewhere else (desktop\build) is told where the mood files are.
+            if (args.Length > 0) BuddyForm.StateDir = args[0];
             // Physical pixels everywhere, so the window, the page and the mouse hook agree.
             SetProcessDPIAware();
             Application.EnableVisualStyles();
@@ -40,14 +42,15 @@ class BuddyForm : Form
     // Painted where the page is transparent, then keyed out of the window.
     static readonly Color Key = Color.FromArgb(255, 1, 254, 1);
 
-    static readonly string StateDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "mood-buddy");
-    static readonly string StateFile = Path.Combine(StateDir, "state.json");
-    static readonly string PlaceFile = Path.Combine(StateDir, "window.txt");
-    // "/buddy desktop off" writes {"action":"quit","at":<ms>} here; a request older than this window is ignored.
-    static readonly string ControlFile = Path.Combine(StateDir, "control.json");
-    static readonly long StartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
+    // "/buddy desktop" builds this program into <.claude>\mood-buddy\app, so the
+    // mood files are one folder up from it.
+    public static string StateDir = Directory.GetParent(AppDir.TrimEnd('\\', '/')).FullName;
+    static string StateFile { get { return Path.Combine(StateDir, "state.json"); } }
+    static string PlaceFile { get { return Path.Combine(StateDir, "window.txt"); } }
+    // "/buddy desktop off" writes {"action":"quit","at":<ms>} here; a request older than this window is ignored.
+    static string ControlFile { get { return Path.Combine(StateDir, "control.json"); } }
+    static readonly long StartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     readonly WebView2 view = new WebView2();
     readonly System.Windows.Forms.Timer poll = new System.Windows.Forms.Timer();
@@ -113,8 +116,8 @@ class BuddyForm : Form
             try
             {
                 // Keep the browser's profile out of the app folder, which may be synced.
-                var env = await CoreWebView2Environment.CreateAsync(null, Path.Combine(StateDir, "webview2"));
-                await view.EnsureCoreWebView2Async(env);
+                var browser = await CoreWebView2Environment.CreateAsync(null, Path.Combine(StateDir, "webview2"));
+                await view.EnsureCoreWebView2Async(browser);
             }
             catch (Exception error)
             {
@@ -127,10 +130,10 @@ class BuddyForm : Form
             web.Settings.AreDevToolsEnabled = false;
             web.Settings.IsStatusBarEnabled = false;
             web.Settings.IsZoomControlEnabled = false;
-            web.SetVirtualHostNameToFolderMapping("buddy.local", AppDir, CoreWebView2HostResourceAccessKind.DenyCors);
             web.WebMessageReceived += OnPageMessage;
             web.NavigationCompleted += delegate { isReady = true; lastText = ""; Check(); };
-            web.Navigate("https://buddy.local/index.html");
+            // The page is a file beside this program; it loads nothing from the internet.
+            web.Navigate(new Uri(Path.Combine(AppDir, "index.html")).AbsoluteUri);
         };
 
         hookProc = OnMouse;
