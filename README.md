@@ -1,6 +1,6 @@
 # mood-buddy
 
-A cute animated sidekick (a cat or a robot) that sits in a side pane and acts out Claude's mood
+A cute animated sidekick (a cat or a robot) that sits in a side pane (or on your Windows desktop) and acts out Claude's mood
 while it works: listening when you send a message, thinking while Claude reasons, typing while
 it runs tools, a magnifying glass while it searches, a raised paw when it corrects you, flat ears
 when it disapproves, and a happy bounce when it finishes.
