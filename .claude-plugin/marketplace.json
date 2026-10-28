@@ -1,0 +1,5 @@
+{
+  "name": "mood-buddy",
+  "owner": { "name": "NabeelAzar" },
+  "plugins": [{ "name": "mood-buddy", "source": "./" }]
+}

@@ -1,0 +1,9 @@
+# Built by desktop\build.cmd
+desktop/build/
+
+# Written by Claude Code when the plugin loads
+.claude-plugin/types/
+tsconfig.json
+
+*.log
+.DS_Store

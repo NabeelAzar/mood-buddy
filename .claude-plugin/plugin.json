@@ -1,0 +1,7 @@
+{
+  "name": "mood-buddy",
+  "version": "0.1.0",
+  "description": "A cute cat or robot in a side pane that acts out Claude's mood, using rules only (no model calls)",
+  "types": "./types/index.d.ts",
+  "license": "MIT"
+}
