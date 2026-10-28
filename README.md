@@ -31,8 +31,8 @@ The repository is private, so it installs only for people who can read it on Git
 computer already has a git login for github.com (an SSH key, or `gh auth login` then
 `gh auth setup-git`): the install never asks for one.
 
-For the desktop buddy, run `desktop\build.cmd` once after installing; it builds
-`desktop\build\MoodBuddy.exe` with the C# compiler that ships with Windows.
+For the buddy on your Windows desktop too, run `/buddy desktop` and double-click the program it
+shows you.
 
 ## Idle antics
 
@@ -54,7 +54,8 @@ two antics, and dozes off again.
   the next `/buddy`; the choice is remembered across sessions
 - `/buddy cat` or `/buddy robot` picks the character (remembered across sessions)
 - The "Switch to …" button in the pane does the same
-- `/buddy desktop` says how to put the buddy on the Windows desktop too (see below)
+- `/buddy desktop` puts the buddy on the Windows desktop too (see below); `/buddy desktop off`
+  closes it
 - `/buddy status` shows the current mood, character and pane; `/buddy help` lists all of these
 
 ## Tuning
@@ -65,12 +66,14 @@ two antics, and dozes off again.
 
 ## On the Windows desktop
 
-`desktop\build\MoodBuddy.exe` is a small always-on-top window with the same buddy, outside Claude.
-Open it from File Explorer (pin it to Start to reopen it later). The mod writes each mood, with its
-drawing, to `%USERPROFILE%\.claude\mood-buddy\state.json`, and the window redraws whenever that
-file changes.
+Run `/buddy desktop`. The first time, it builds a small always-on-top window with the same buddy
+into `%USERPROFILE%\.claude\mood-buddy\app\` (about 10 seconds), then opens File Explorer with
+`MoodBuddy.exe` selected: double-click it. Pin it to Start to reopen it any time; the path never
+changes, and `/buddy desktop` rebuilds it there only when a plugin update changes it. The mod
+writes each mood, with its drawing, to `%USERPROFILE%\.claude\mood-buddy\state.json`, and the
+window redraws whenever that file changes.
 
-- About 820 KB in all: an 11 KB C# program plus Microsoft's WebView2 libraries. It draws with the
+- About 820 KB in all: a 15 KB C# program plus Microsoft's WebView2 libraries. It draws with the
   WebView2 Runtime (the Edge engine) that ships with Windows 10 and 11, so nothing else is installed.
 - Drag it by the cat or its bubble; it remembers the spot. Right-click it for "Back to the corner"
   and "Close buddy", or run `/buddy desktop off`. Clicks on the empty space around it pass
@@ -79,7 +82,8 @@ file changes.
   when none is running.
 - Claude Code doesn't start it: programs Claude Code starts can run in a sandbox where WebView2
   (like any Chromium) can't start its helper processes and crashes.
-- To rebuild it, run `desktop\build.cmd`, which uses the C# compiler that ships with Windows.
-  On its first run it downloads Microsoft's WebView2 SDK (1.0.2903.40, BSD-licensed; the license
-  comes inside the package) from nuget.org, checks its SHA-256, and keeps the three DLLs it needs
-  in `desktop\lib\`, which it creates and git ignores.
+- The build is `desktop\build.cmd`, using the C# compiler that ships with Windows. Its first run
+  downloads Microsoft's WebView2 SDK (1.0.2903.40, BSD-licensed; the license comes inside the
+  package) from nuget.org, checks its SHA-256, and keeps the three DLLs it needs. Where
+  `/buddy desktop` can't build (no network, say), it prints the one command to run instead.
+  `desktop\build.cmd` with no folder builds into `desktop\build\` for working on the code.

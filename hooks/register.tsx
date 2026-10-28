@@ -56,7 +56,7 @@ const COMMANDS: readonly (readonly [string, string])[] = [
   ['/buddy cat', 'switch to the cat (remembered)'],
   ['/buddy robot', 'switch to the robot (remembered)'],
   ['/buddy off', 'hide the buddy in Claude: pane, band and status line (remembered)'],
-  ['/buddy desktop', 'how to put the buddy on the Windows desktop'],
+  ['/buddy desktop', 'put the buddy on the Windows desktop (builds it the first time)'],
   ['/buddy desktop off', 'close the desktop buddy'],
   ['/buddy status', 'current mood, character and pane'],
   ['/buddy help', 'this list'],
@@ -190,15 +190,67 @@ function publish($: EngineInterface): void {
   writing = writing.then(() => $.fs.write(file, text)).catch(() => undefined)
 }
 
-// The overlay is started by the person, not from here: a program Claude Code
-// starts can run sandboxed, and WebView2 can't start its own processes there.
-async function overlayHelp($: EngineInterface): Promise<string> {
-  if (stateDir === undefined) return "The desktop buddy can't run here: USERPROFILE isn't set."
-  const exe = `${$.plugin.root}/desktop/build/MoodBuddy.exe`.replaceAll('/', '\\')
-  if (!(await $.fs.exists(exe))) {
-    return `The desktop buddy isn't built yet: run ${$.plugin.root.replaceAll('/', '\\')}\\desktop\\build.cmd first.`
+const windowsPath = (path: string) => path.replaceAll('/', '\\')
+
+// What the desktop buddy is built from; when any of these change, it is rebuilt.
+const OVERLAY_SOURCES = ['MoodBuddy.cs', 'index.html', 'renderer.js', 'build.cmd'] as const
+
+async function overlayFingerprint($: EngineInterface, sourceDir: string): Promise<string> {
+  const texts = await Promise.all(OVERLAY_SOURCES.map(name => $.fs.read(`${sourceDir}/${name}`)))
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texts.join('\u0000')))
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+async function requestOverlayQuit($: EngineInterface): Promise<void> {
+  if (stateDir === undefined) return
+  await $.fs.write(`${stateDir}/control.json`, JSON.stringify({ action: 'quit', at: Date.now() }))
+}
+
+// Builds the desktop buddy into ~/.claude/mood-buddy/app (the same place for
+// every session and plugin version, so a pinned shortcut keeps working), again
+// only when its sources change, then shows it in File Explorer. It is opened by
+// the person, not from here: a program Claude Code starts can run sandboxed,
+// and WebView2 can't start its own processes there.
+async function prepareOverlay($: EngineInterface): Promise<string> {
+  if ((await $.env.get('OS')) !== 'Windows_NT') return 'The desktop buddy is Windows-only for now.'
+  if (stateDir === undefined) return "The desktop buddy can't be set up here: USERPROFILE isn't set."
+  const sourceDir = `${$.plugin.root}/desktop`
+  const appDir = `${stateDir}/app`
+  const exe = windowsPath(`${appDir}/MoodBuddy.exe`)
+  const fingerprintFile = `${appDir}/source.sha256`
+  const fingerprint = await overlayFingerprint($, sourceDir)
+  const hasExe = await $.fs.exists(exe)
+  const builtFrom = hasExe && (await $.fs.exists(fingerprintFile)) ? (await $.fs.read(fingerprintFile)).trim() : ''
+  let intro = ''
+  if (builtFrom !== fingerprint) {
+    // A running buddy locks its program file, so it is asked to close first.
+    if (hasExe) {
+      await requestOverlayQuit($)
+      await $.clock.sleep(1500)
+    }
+    // `call` keeps cmd from stripping the quotes around paths with spaces.
+    const built = await $.process.run(
+      ['cmd.exe', '/d', '/c', 'call', windowsPath(`${sourceDir}/build.cmd`), windowsPath(appDir)],
+      { timeoutMs: 180_000 },
+    )
+    if (built.exitCode !== 0) {
+      const why = `${built.stdout}\n${built.stderr}`.trim().split(/\r?\n/).pop() ?? 'unknown error'
+      return [
+        `Couldn't build the desktop buddy here (${why}).`,
+        'Build it yourself in a Command Prompt, then run /buddy desktop again:',
+        `  "${windowsPath(`${sourceDir}/build.cmd`)}" "${windowsPath(appDir)}"`,
+      ].join('\n')
+    }
+    await $.fs.write(fingerprintFile, fingerprint)
+    intro = hasExe ? 'Updated the desktop buddy (it closed to update; open it again). ' : 'Built the desktop buddy. '
   }
-  return `To put the buddy on your desktop, open ${exe} from File Explorer (pin it to Start to reopen it later). It follows this session's moods while it runs; right-click it or run /buddy desktop off to close it.`
+  // Explorer opens its window in the person's own session, outside any sandbox.
+  await $.process.run(['explorer.exe', `/select,${exe}`]).catch(() => undefined)
+  return [
+    `${intro}Double-click MoodBuddy.exe in the File Explorer window to put the buddy on your desktop.`,
+    `It's at ${exe}; pin it to Start to reopen it any time.`,
+    'It follows your Claude sessions while it runs; right-click it or run /buddy desktop off to close it.',
+  ].join('\n')
 }
 
 async function setSkin($: EngineInterface, skin: Skin, isSaved = true): Promise<void> {
@@ -254,11 +306,11 @@ export const register: Register = on => {
     if (choice === 'desktop off') {
       // The overlay runs outside Claude Code, so it is asked to close through a file it watches.
       if (stateDir === undefined) return { text: "Can't reach the desktop buddy: USERPROFILE isn't set." }
-      await $.fs.write(`${stateDir}/control.json`, JSON.stringify({ action: 'quit', at: Date.now() }))
+      await requestOverlayQuit($)
       return { text: 'Asked the desktop buddy to close. It goes within a second if it was running.' }
     }
     if (choice === 'desktop') {
-      return { text: await overlayHelp($) }
+      return { text: await prepareOverlay($) }
     }
     if (choice === 'off') {
       await setHidden($, true)
