@@ -77,4 +77,6 @@ file changes.
 - Claude Code doesn't start it: programs Claude Code starts can run in a sandbox where WebView2
   (like any Chromium) can't start its helper processes and crashes.
 - To rebuild it, run `desktop\build.cmd`, which uses the C# compiler that ships with Windows.
-  `desktop\lib\` holds the WebView2 SDK files (1.0.2903.40, BSD-licensed, see its license file).
+  On its first run it downloads Microsoft's WebView2 SDK (1.0.2903.40, BSD-licensed; the license
+  comes inside the package) from nuget.org, checks its SHA-256, and keeps the three DLLs it needs
+  in `desktop\lib\`, which it creates and git ignores.

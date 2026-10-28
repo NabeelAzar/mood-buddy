@@ -53,7 +53,7 @@ the face doesn't flicker. Subagent turns are ignored.
 | `hooks/antics.ts` | idle antics (5 cat, 6 robot) and the two dreams: pose changes, SVG overlay, length. `register.tsx` plays a random one every 20–40 s while idle (`playAntic`); any mood change stops it. The mood atom carries `antic` (tag `mood-2`). |
 | `hooks/sprites.ts` | the pose per mood and the cat and robot SVG builders. Animation is SMIL inside the SVG, so the pane redraws only on mood changes. Also the text faces for the terminal. |
 | `types/index.d.ts` | state contract: `mood` and `skin` atoms under `mood-buddy` |
-| `desktop/` | the desktop overlay: `MoodBuddy.cs` (C# 5 WinForms + WebView2, borderless always-on-top window that watches `~/.claude/mood-buddy/state.json`), `index.html` + `renderer.js` (the page it shows), `lib/` (WebView2 SDK DLLs), `build.cmd` (builds `build/` with Windows' own csc.exe) |
+| `desktop/` | the desktop overlay: `MoodBuddy.cs` (C# 5 WinForms + WebView2, borderless always-on-top window that watches `~/.claude/mood-buddy/state.json`), `index.html` + `renderer.js` (the page it shows), `build.cmd` downloads the WebView2 SDK DLLs into `lib/` (git-ignored) from nuget.org, checksum-pinned, `build.cmd` (builds `build/` with Windows' own csc.exe) |
 | `hooks/buddy.test.tsx` | 13 tests: classifier cases, sprites for every mood, pane rendering, the no-pane fallback |
 
 ## Where it shows

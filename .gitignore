@@ -7,3 +7,6 @@ tsconfig.json
 
 *.log
 .DS_Store
+
+# Downloaded by desktop\build.cmd from nuget.org
+desktop/lib/
